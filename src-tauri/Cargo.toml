@@ -1,6 +1,6 @@
 [package]
 name = "gesture-classroom"
-version = "1.0.0"
+version = "1.0.1"
 description = "Classroom gesture feedback demo"
 authors = ["Gesture Classroom"]
 edition = "2021"

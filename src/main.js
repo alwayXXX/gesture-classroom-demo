@@ -12,10 +12,11 @@ app.innerHTML = `
       <div class="control-card"><div class="control-title"><div><b>课堂控制台</b><small id="controlHint">开启摄像头，或进入演示模式体验</small></div><div class="total"><span>有效票数</span><strong id="total">0</strong><small>票</small></div></div><div class="controls"><button class="primary" id="startBtn">◉ &nbsp;开启摄像头</button><button id="demoBtn">✦ &nbsp;演示模式</button><button id="freezeBtn" disabled>Ⅱ &nbsp;定格统计</button><button id="revealBtn">✓ &nbsp;公布答案</button><button id="resetBtn" class="reset">↻ &nbsp;新一轮</button></div><div id="message" class="message" role="status">每只被识别的手计为一票，人数较多或手部遮挡时可能出现误差。</div><div class="demo-controls" id="demoControls" hidden><span>演示投票</span><div id="demoVotes"></div><button id="demoClear" class="mini">清空模拟票</button><small>模拟数据不会使用摄像头</small></div></div>
     </section>
     <aside class="sidebar"><div class="camera-card"><div class="card-head"><div><span class="eyebrow">CAMERA</span><h3>识别画面</h3></div><span class="camera-state" id="cameraState">未开启</span></div><div class="camera"><video id="video" autoplay playsinline muted></video><canvas id="canvas"></canvas><div class="camera-placeholder" id="cameraPlaceholder"><div class="camera-icon">⌁</div><b>准备好了吗？</b><span>开启摄像头后，在这里预览画面</span></div></div><div class="camera-footer"><span class="camera-dot"></span><span id="cameraHint">识别资源已包含在应用中</span><button id="stopBtn" class="text-button" hidden>关闭</button></div></div>
-      <div class="guide-card"><div class="card-head"><div><span class="eyebrow">HOW IT WORKS</span><h3>三步开始互动</h3></div><span class="sparkle">✳</span></div><div class="step"><span>01</span><div><b>准备题目</b><p>在教师设置中填写题目并选择正确答案。</p></div></div><div class="step"><span>02</span><div><b>举手作答</b><p>手掌面向镜头，伸出 1–4 根手指。</p></div></div><div class="step"><span>03</span><div><b>查看结果</b><p>定格本轮统计，公布答案和正确率。</p></div></div><div class="guide-note">不统计拇指；一只手代表一票，无法识别学生身份。</div></div>
+      <div class="guide-card"><div class="card-head"><div><span class="eyebrow">HOW IT WORKS</span><h3>三步开始互动</h3></div><span class="sparkle">✳</span></div><div class="step"><span>01</span><div><b>准备题目</b><p>在教师设置中填写题目，或通过 PPT 展示。</p></div></div><div class="step"><span>02</span><div><b>举手作答</b><p>手掌面向镜头，伸出 1–4 根手指。</p></div></div><div class="step"><span>03</span><div><b>查看结果</b><p>定格统计后选择正确答案，公布答案和正确率。</p></div></div><div class="guide-note">不统计拇指；一只手代表一票，无法识别学生身份。</div></div>
     </aside>
   </main>
-  <dialog id="settings"><form method="dialog" id="settingsForm"><div class="dialog-head"><div><span class="eyebrow">TEACHER SETTINGS</span><h2>设置本轮题目</h2><p>题目和选项可以留空，配合课堂 PPT 使用。</p></div><button type="button" class="close" id="closeSettings" aria-label="关闭">×</button></div><label class="field-label" for="questionInput">题目 <span>选填</span></label><textarea id="questionInput" rows="3" maxlength="200" placeholder="例如：下列哪个选项是正确的？"></textarea><div class="field-label">选项内容 <span>选填</span></div><div id="optionInputs" class="option-inputs"></div><div class="field-label answer-label">正确答案 <span>公布时需要选择</span></div><div class="answer-grid" id="answerInputs"></div><p class="dialog-hint">设置仅保存在当前页面内。应用设置会开启新一轮并清空统计。</p><div class="dialog-actions"><button type="button" id="cancelSettings">取消</button><button type="submit" class="primary">应用并开始新一轮</button></div></form></dialog>
+  <dialog id="settings"><form method="dialog" id="settingsForm"><div class="dialog-head"><div><span class="eyebrow">TEACHER SETTINGS</span><h2>设置本轮题目</h2><p>题目和选项可以留空，配合课堂 PPT 使用。</p></div><button type="button" class="close" id="closeSettings" aria-label="关闭">×</button></div><label class="field-label" for="questionInput">题目 <span>选填</span></label><textarea id="questionInput" rows="3" maxlength="200" placeholder="例如：下列哪个选项是正确的？"></textarea><div class="field-label">选项内容 <span>选填</span></div><div id="optionInputs" class="option-inputs"></div><p class="dialog-hint">设置仅保存在当前页面内。应用设置会开启新一轮并清空统计。</p><div class="dialog-actions"><button type="button" id="cancelSettings">取消</button><button type="submit" class="primary">应用并开始新一轮</button></div></form></dialog>
+  <dialog id="answerDialog"><form id="answerForm"><div class="dialog-head"><div><h2>选择正确答案</h2><p>本轮统计已定格，确认后将公布答案和正确率。</p></div><button type="button" class="close" id="closeAnswer" aria-label="关闭">×</button></div><div class="field-label">正确答案</div><div class="answer-grid" id="answerInputs"></div><div class="dialog-actions"><button type="button" id="cancelAnswer">取消</button><button type="submit" class="primary">确认公布</button></div></form></dialog>
 `;
 const $ = id => document.getElementById(id);
 let state = { mode: 'idle', counts: emptyCounts(), frozen: false, revealed: false, answer: null, question: '', options: ['', '', '', ''] };
@@ -23,7 +24,7 @@ let stream = null, detector = null, raf = 0, lastTime = -1, starting = false;
 const video = $('video'), canvas = $('canvas'), ctx = canvas.getContext('2d');
 $('options').innerHTML = LETTERS.map((letter, i) => `<div class="option" id="option${i}"><div class="option-top"><span class="option-letter">${letter}</span><span class="fingers">${i + 1} 指</span></div><div class="option-text" id="optionText${i}">选项 ${letter}</div><div class="option-bottom"><strong id="count${i}">0</strong><span>票</span><b id="percent${i}">0%</b></div><div class="bar"><i id="bar${i}"></i></div></div>`).join('');
 $('optionInputs').innerHTML = LETTERS.map((l, i) => `<label><b>${l}</b><input id="input${i}" maxlength="80" placeholder="选项 ${l}（选填）"></label>`).join('');
-$('answerInputs').innerHTML = LETTERS.map((l, i) => `<label><input type="radio" name="answer" value="${i}"><span>${l}</span></label>`).join('');
+$('answerInputs').innerHTML = LETTERS.map((l, i) => `<label><input type="radio" name="answer" value="${i}" required><span>${l}</span></label>`).join('');
 $('demoVotes').innerHTML = LETTERS.map((l, i) => `<button type="button" class="mini vote" data-index="${i}">+ ${l}</button>`).join('');
 function render() {
   const total = state.counts.reduce((a, b) => a + b, 0);
@@ -39,6 +40,7 @@ function render() {
   $('total').textContent = total;
   $('roundStatus').textContent = state.frozen ? '本轮已定格' : state.mode === 'camera' ? '正在识别' : state.mode === 'demo' ? '演示模式' : '等待开始';
   $('freezeBtn').disabled = state.mode === 'idle';
+  $('revealBtn').disabled = !state.frozen;
   $('freezeBtn').textContent = state.frozen ? '▶  继续统计' : 'Ⅱ  定格统计';
   $('demoControls').hidden = state.mode !== 'demo';
   $('demoVotes').querySelectorAll('button').forEach(button => button.disabled = state.frozen);
@@ -59,7 +61,7 @@ function render() {
     $('message').classList.remove('success');
   }
 }
-function resetRound() { state.counts = emptyCounts(); state.frozen = false; state.revealed = false; render(); }
+function resetRound() { state.counts = emptyCounts(); state.frozen = false; state.revealed = false; state.answer = null; render(); }
 function stopCamera() {
   cancelAnimationFrame(raf); stream?.getTracks().forEach(track => track.stop()); stream = null; video.srcObject = null;
   ctx.clearRect(0, 0, canvas.width, canvas.height); if (state.mode === 'camera') state.mode = 'idle';
@@ -99,10 +101,12 @@ $('demoBtn').onclick = () => { if (starting) return; stopCamera(); state.mode = 
 $('demoVotes').onclick = event => { const i = event.target.dataset.index; if (i !== undefined && !state.frozen) { state.counts[Number(i)]++; render(); } };
 $('demoClear').onclick = () => { state.counts = emptyCounts(); render(); };
 $('freezeBtn').onclick = () => { state.frozen = !state.frozen; if (!state.frozen) state.revealed = false; render(); };
-$('revealBtn').onclick = () => { if (state.answer === null) { $('message').textContent = '请先在教师设置中选择正确答案。'; $('settingsToggle').click(); return; } state.frozen = true; state.revealed = true; render(); };
+$('revealBtn').onclick = () => { if (!state.frozen) return; document.querySelectorAll('[name=answer]').forEach(input => { input.checked = Number(input.value) === state.answer; }); $('answerDialog').showModal(); };
+$('closeAnswer').onclick = $('cancelAnswer').onclick = () => $('answerDialog').close();
+$('answerForm').onsubmit = event => { event.preventDefault(); const selected = document.querySelector('[name=answer]:checked'); if (!selected) return; state.answer = Number(selected.value); state.revealed = true; $('answerDialog').close(); render(); };
 $('resetBtn').onclick = resetRound;
-$('settingsToggle').onclick = () => { $('questionInput').value = state.question; state.options.forEach((value, i) => { $(`input${i}`).value = value; }); document.querySelectorAll('[name=answer]').forEach(input => { input.checked = Number(input.value) === state.answer; }); $('settings').showModal(); };
+$('settingsToggle').onclick = () => { $('questionInput').value = state.question; state.options.forEach((value, i) => { $(`input${i}`).value = value; }); $('settings').showModal(); };
 $('closeSettings').onclick = $('cancelSettings').onclick = () => $('settings').close();
-$('settingsForm').onsubmit = event => { event.preventDefault(); state.question = $('questionInput').value.trim(); state.options = LETTERS.map((_, i) => $(`input${i}`).value.trim()); const selected = document.querySelector('[name=answer]:checked'); state.answer = selected ? Number(selected.value) : null; $('settings').close(); resetRound(); };
+$('settingsForm').onsubmit = event => { event.preventDefault(); state.question = $('questionInput').value.trim(); state.options = LETTERS.map((_, i) => $(`input${i}`).value.trim()); $('settings').close(); resetRound(); };
 window.addEventListener('beforeunload', stopCamera);
 render();
