@@ -1,0 +1,14 @@
+<!doctype html><html><head><meta charset="utf-8"><title>Local vision resource test</title></head><body data-status="starting">
+<script type="module">
+import { FilesetResolver, HandLandmarker } from '@mediapipe/tasks-vision';
+try {
+  const vision = await FilesetResolver.forVisionTasks('/wasm');
+  const detector = await HandLandmarker.createFromOptions(vision, {
+    baseOptions: { modelAssetPath: '/hand_landmarker.task', delegate: 'CPU' },
+    runningMode: 'IMAGE', numHands: 1
+  });
+  const canvas = document.createElement('canvas'); canvas.width = 128; canvas.height = 128;
+  detector.detect(canvas); detector.close();
+  document.body.dataset.status = 'ok';
+} catch (error) { document.body.dataset.status = 'error'; document.body.textContent = String(error.stack || error); }
+</script></body></html>
